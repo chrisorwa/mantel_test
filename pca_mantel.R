@@ -1,18 +1,39 @@
-
-#load required libraries
+#load required library
+library(tm)
+library(ggplot2)
+library(ggthemes)
 library(ape)
+library(RWeka)
 
-#============================== Mantel's Test on PCA ===============================================
-#create empty data frame
-record = data.frame()
+#load data
+dfile <-read.csv('eastleigh.csv')
+
+#Create Bigram Tokenizer 
+BigramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 3, max = 3))
+
+#create term-document matrix
+corpus <-Corpus(VectorSource(dfile$text))
+tdm <-DocumentTermMatrix(corpus,control = list(stopwords=stopwords('SMART')))
+tdm2 <-removeSparseTerms(tdm,0.99)
+
+#convert to matrix
+b <-as.data.frame(as.matrix(tdm2))
+
+#define euclidean function
+euclidean <-function(x2,y2,x1,y1){
+  a <-(x2-x1)*(x2-x1)
+  b <-(y2-y1)*(y2-y1)
+  return(sqrt(a+b))
+}
 
 #initialize loop variables
-k = 2
-v = nrow(vx)
+k = 500
+v = nrow(b)
+record = c()
 
-while(v != k )
+while(v-k > 0 )
 {
-  c <-prcomp(vx[1:k,])
+  c <-prcomp(b[1:k,])
   d <-as.data.frame(c$rotation)
   e <-d[c('PC1','PC2')]
   
@@ -28,7 +49,7 @@ while(v != k )
     }
   }
   
-  c <-prcomp(vx[1:v,])
+  c <-prcomp(b[1:v,])
   d <-as.data.frame(c$rotation)
   e <-d[c('PC1','PC2')]
   
@@ -52,6 +73,34 @@ while(v != k )
   record = rbind(record,rec)
   
   #increment counter
-  k = k+1
-  v = v-1
+  k = k+500
+  v = v-500
 } 
+
+#give column names
+colnames(record) <-c("k","j","p-value")
+record <-as.data.frame(record)
+
+#create new variable
+record$diff <-record$j - record$k
+
+#plotting
+ggplot(record, aes(x=record$diff,y=record$`p-value`)) + 
+  xlab("Difference")+
+  ylab("P-value")+
+  theme_economist(base_size = 10,horizontal = TRUE)+
+  geom_line(aes(x = record$diff,y = record$`p-value`,color='red',size=1)) + 
+  theme(text=element_text(size=10))+
+  ggtitle("Mantels Test \'n")
+
+qplot(x = record$diff,y = record$`p-value`)
+
+#===========================================================================================
+
+#perform PCA
+c <-prcomp(b)
+d <-as.data.frame(c$rotation)
+e <-d[c('PC1','PC2')]
+
+#plotting
+qplot(PC1,PC2,data = e,main = 'Principal Component Analysis\n',label=rownames(e),geom='text')

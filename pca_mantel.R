@@ -6,7 +6,7 @@ library(ape)
 library(RWeka)
 
 #load data
-dfile <-read.csv('eastleigh.csv')
+dfile <-read.csv()
 
 #Create Bigram Tokenizer 
 BigramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 3, max = 3))
